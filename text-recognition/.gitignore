@@ -1,0 +1,4 @@
+#gitignore
+key.json
+*.jpg
+*.png

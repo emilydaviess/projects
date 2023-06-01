@@ -1,0 +1,37 @@
+{
+    "league": {
+        "id": 973,
+        "name": "CAF Cup of Nations - U17",
+        "type": "Cup",
+        "logo": "https://media-3.api-sports.io/football/leagues/973.png"
+    },
+    "country": {
+        "name": "World",
+        "code": null,
+        "flag": null
+    },
+    "seasons": [
+        {
+            "year": 2023,
+            "start": "2023-04-29",
+            "end": "2023-05-19",
+            "current": true,
+            "coverage": {
+                "fixtures": {
+                    "events": true,
+                    "lineups": true,
+                    "statistics_fixtures": false,
+                    "statistics_players": false
+                },
+                "standings": false,
+                "players": false,
+                "top_scorers": false,
+                "top_assists": false,
+                "top_cards": false,
+                "injuries": false,
+                "predictions": true,
+                "odds": false
+            }
+        }
+    ]
+}

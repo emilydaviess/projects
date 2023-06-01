@@ -37,7 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'football.models', # need the name of your app for changes to be detected when running things like makemigrations
+    'football', # need the name of your app for changes to be detected when running things like makemigrations
 ]
 
 MIDDLEWARE = [

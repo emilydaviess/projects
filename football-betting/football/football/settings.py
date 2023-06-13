@@ -1,3 +1,5 @@
+from .common_settings import *
+
 """
 Django settings for football project.
 

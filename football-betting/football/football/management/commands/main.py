@@ -7,6 +7,7 @@ from django.db.models import Q
 class Command(BaseCommand):
     help = 'Pull raw football data from RapidAPI'
     # https://rapidapi.com/api-sports/api/api-football
+    # https://rapidapi.com/Wolf1984/api/football-xg-statistics (XG)
 
     def add_arguments(self, parser):
         parser.add_argument("--override", dest="override", action="store_true")

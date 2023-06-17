@@ -3,6 +3,7 @@ from django.core import management
 from django.conf import settings
 from django.core.management.base import BaseCommand
 import mysql.connector
+from django.db import connection
 import os
 # from football.management.commands.commands import LogCommand
 
@@ -30,10 +31,10 @@ class Command(BaseCommand):
 				self.queries.append(txt)
 				query += "\n\n" + txt
 		self.query = query
-		self.handle_client_prompt()
+		self.handle_prompt()
 		#super(Command, self).handle(*args, **kwargs)
 
-	def handle_client_prompt(self):
+	def handle_prompt(self):
 		make_file = False
 		if make_file:
 			text_file = open("gen_batch_query.sql", "w+")

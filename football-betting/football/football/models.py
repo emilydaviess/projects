@@ -148,18 +148,41 @@ class FixtureStats(models.Model):
 #         unique_together = ['player_match']
 
 
+#### AGG
+class AggHomeFixture(models.Model):
+    # aggregated home results per season
+    season = models.CharField(max_length=10)
+    home_team = models.ForeignKey(Team,on_delete=models.PROTECT)
+    team_name = models.CharField(max_length=50)
+    wins = models.IntegerField(null=True)
+    losses = models.IntegerField(null=True)
+    draws = models.IntegerField(null=True)
+    goals_for = models.IntegerField(null=True) # goals for the home team
+    goals_against = models.IntegerField(null=True) # goals for the away team
+    ht_score_for = models.IntegerField(null=True)
+    ht_score_against = models.IntegerField(null=True)
+    ft_score_for = models.IntegerField(null=True)
+    ft_score_against = models.IntegerField(null=True)
 
+    class Meta:
+        db_table = "agg_home_fixture"
+        unique_together = ['season', 'home_team']
 
-##### AGG
-# class AggHomeFixture(models.Model):
-#     season = models.CharField(max_length=10)
-#     home_team = models.ForeignKey(Team,on_delete=models.PROTECT)
-#     team_name = models.CharField(max_length=50)
-#     wins = models.IntegerField(null=True)
-#     losses = models.IntegerField(null=True)
-#     draws = models.IntegerField(null=True)
-#     losses = models.IntegerField(null=True)
+class AggAwayFixture(models.Model):
+    # aggregated away results per season
+    season = models.CharField(max_length=10)
+    away_team = models.ForeignKey(Team,on_delete=models.PROTECT)
+    team_name = models.CharField(max_length=50)
+    wins = models.IntegerField(null=True)
+    losses = models.IntegerField(null=True)
+    draws = models.IntegerField(null=True)
+    goals_for = models.IntegerField(null=True) # goals for the away team
+    goals_against = models.IntegerField(null=True) # goals for the home team
+    ht_score_for = models.IntegerField(null=True)
+    ht_score_against = models.IntegerField(null=True)
+    ft_score_for = models.IntegerField(null=True)
+    ft_score_against = models.IntegerField(null=True)
 
-#     class Meta:
-#         db_table = "agg_home_fixture"
-#         unique_together = ['season', home_team]
+    class Meta:
+        db_table = "agg_away_fixture"
+        unique_together = ['season', 'away_team']

@@ -89,63 +89,81 @@ class FixtureStats(models.Model):
         db_table = "fixture_stats"
         unique_together = ['fixture']
 
-# class Player(models.Model):
-#     name = models.CharField(max_length=150)
-#     rapid_player_id = models.IntegerField()
-#     firstname = models.CharField(max_length=50)
-#     lastname = models.CharField(max_length=50)
-#     age = models.IntegerField()
-#     dob = models.DateField()
-#     country = models.CharField(max_length=50, null=True)
-#     nationality = models.CharField(max_length=50, null=True)
-#     height = models.CharField(max_length=10, null=True)
-#     weight = models.CharField(max_length=10, null=True)
-#     injured = models.BooleanField(default=False)
-#     created = models.DateTimeField(auto_now_add=True)
-#     updated = models.DateTimeField(auto_now=True)
+class Player(models.Model):
+    name = models.CharField(max_length=150)
+    rapid_player_id = models.IntegerField()
+    firstname = models.CharField(max_length=50)
+    lastname = models.CharField(max_length=50)
+    age = models.IntegerField(null=True)
+    dob = models.DateField(null=True)
+    country = models.CharField(max_length=50, null=True)
+    nationality = models.CharField(max_length=50, null=True)
+    height = models.CharField(max_length=10, null=True)
+    weight = models.CharField(max_length=10, null=True)
+    injured = models.BooleanField(default=False)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
 
-#     class Meta:
-#         db_table = "player"
-#         unique_together = ['team','rapid_player_id']
+    class Meta:
+        db_table = "player"
+        unique_together = ['rapid_player_id']
 
+class PlayerStats(models.Model):
+    player = models.ForeignKey(Player, on_delete=models.PROTECT)
+    team = models.ForeignKey(Team, on_delete=models.PROTECT)
+    league = models.ForeignKey(League, on_delete=models.PROTECT)
+    season = models.CharField(max_length=10, null=True)
+    appearances = models.IntegerField(null=True)
+    minutes = models.IntegerField(null=True)
+    position = models.CharField(max_length=50, null=True)
+    rating = models.DecimalField(max_digits=10, decimal_places=5, blank=True, null=True)
+    subbed_in = models.IntegerField(null=True)
+    subbed_out = models.IntegerField(null=True)
+    bench = models.IntegerField(null=True)
+    captain = models.BooleanField(default=False)
 
-# class PlayerMatch(models.Model):
-#     player = models.ForeignKey(Player, on_delete=models.PROTECT)
-#     team = models.ForeignKey(Team, on_delete=models.PROTECT)
-#     league = models.ForeignKey(League, on_delete=models.PROTECT)
-#     appearances = models.IntegerField()
-#     minutes = models.IntegerField()
-#     position = models.CharField(max_length=50, null=True)
-#     rating = models.DecimalField(max_digits=10, decimal_places=5, blank=True, null=True)
-#     subbed_in = models.IntegerField()
-#     subbed_out = models.IntegerField()
-#     bench = models.IntegerField()
-#     captain = models.BooleanField(default=False)
-#     created = models.DateTimeField(auto_now_add=True)
-#     updated = models.DateTimeField(auto_now=True)
+    # goals
+    shots = models.IntegerField(null=True)
+    shots_on_target = models.IntegerField(null=True)
+    goals = models.IntegerField(null=True)
+    conceded = models.IntegerField(null=True)
+    assists = models.IntegerField(null=True)
+    saves = models.IntegerField(null=True)
+    # passes 
+    passes = models.IntegerField(null=True)
+    key_passes = models.IntegerField(null=True)
+    accuracy = models.DecimalField(max_digits=10, decimal_places=5, blank=True, null=True)
+    # tackles
+    tackles = models.IntegerField(null=True)
+    blocks = models.IntegerField(null=True)
+    interceptions = models.IntegerField(null=True)
+    # duels
+    duels = models.IntegerField(null=True)
+    duels_won = models.IntegerField(null=True)
+    # dribbles
+    dribbles = models.IntegerField(null=True)
+    dribble_success = models.IntegerField(null=True)
+    dribble_past = models.IntegerField(null=True)
+    # fouls
+    fouls_drawn = models.IntegerField(null=True)
+    fouls_committed = models.IntegerField(null=True)
+    # cards
+    yellow_cards = models.IntegerField(null=True)
+    yellow_red_cards = models.IntegerField(null=True)
+    red_cards = models.IntegerField(null=True)
+    # penalty
+    penalty_won = models.IntegerField(null=True)
+    penalty_committed = models.IntegerField(null=True)
+    penalty_scored = models.IntegerField(null=True)
+    penalty_missed = models.IntegerField(null=True)
+    penalty_saved = models.IntegerField(null=True)
+    
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
 
-#     class Meta:
-#         db_table = "player_match"
-#         unique_together = ['player','team', 'league']
-
-# class PlayerMatchStats(models.Model):
-#     player_match = models.ForeignKey(PlayerMatch, on_delete=models.PROTECT)
-#     team = models.ForeignKey(Team, on_delete=models.PROTECT)
-#     league = models.ForeignKey(League, on_delete=models.PROTECT)
-#     appearances = models.IntegerField()
-#     minutes = models.IntegerField()
-#     position = models.CharField(max_length=50, null=True)
-#     rating = models.DecimalField(max_digits=10, decimal_places=5, blank=True, null=True)
-#     subbed_in = models.IntegerField()
-#     subbed_out = models.IntegerField()
-#     bench = models.IntegerField()
-#     captain = models.BooleanField(default=False)
-#     created = models.DateTimeField(auto_now_add=True)
-#     updated = models.DateTimeField(auto_now=True)
-
-#     class Meta:
-#         db_table = "player_match_stats"
-#         unique_together = ['player_match']
+    class Meta:
+        db_table = "player_stats"
+        unique_together = ['player','team', 'league','season']
 
 
 #### AGG

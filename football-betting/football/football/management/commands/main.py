@@ -1,8 +1,9 @@
 # main.py
 import requests
-from football.models import League, Team, TeamVenue, Season, Fixture, FixtureStats
+from football.models import League, Team, TeamVenue, Season, Fixture, FixtureStats, Player,PlayerStats
 from django.core.management.base import BaseCommand
 from django.db.models import Q
+from django.conf import settings
 
 class Command(BaseCommand):
     help = 'Pull raw football data from RapidAPI'
@@ -16,26 +17,27 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
 
         self.headers = {
-            "X-RapidAPI-Key": "9e42c082bcmshf010546ab6cbf61p10d694jsnd6bffa46a932",
-            "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com"
+            "X-RapidAPI-Host": "9e42c082bcmshf010546ab6cbf61p10d694jsnd6bffa46a932",
+            "X-RapidAPI-Key": settings.X_RAPIDAPI_KEY_PASSWORD
         }
         self.season = "2022"
         self.url = "https://api-football-v1.p.rapidapi.com/v3/"
 
 
         # 1. Pull and Insert League Data i.e. Premier League, La Liga
-        print("Pulling and Inserting League Data")
         # check if we already have data in League, only run if League is empty
         if League.objects.count() == 0 or options['override']:
+            print("Pulling and Inserting League Data")
             self.league_data()
 
         # 2. Pull and Insert Seasons i.e. 2022
-        print("Pulling and Inserting Seasons")
+
         # check if we already have data in Season, only run if League is empty
         if Season.objects.count() == 0 or options['override']:
+            print("Pulling and Inserting Seasons")
             self.season_data()
 
-        # 3. Pulling and Inserting Team, Venue and Fixture Data
+        # 3. Pulling and Inserting Team, Venue Fixture and Player Data
         
         # team data requires us to pass up an optional parameter like league ID
         # for this, we'll pass up the league_id's for the top5 European leagues
@@ -49,20 +51,31 @@ class Command(BaseCommand):
 
         for league in european_leagues: 
             # Team & Venue Data
+
+            #if Team.objects.count() == 0 or options['override']:
             print("Pulling and Inserting Team Data")
-            if Team.objects.count() == 0 or options['override']:
-                print("INSERTING", league)
-                self.team_data(league_id=league['rapid_league_id'], season=self.season)
+            self.team_data(league_id=league['rapid_league_id'], season=self.season)
 
             # Fixture Data
-            print("Pulling and Inserting Fixture Data")
-            #if Fixture.objects.count() == 0 or options['override']:
-            self.fixture_data(league_id=league['rapid_league_id'], season=self.season)
+            if Fixture.objects.count() == 0 or options['override']:
+                print("Pulling and Inserting Fixture Data")
+                self.fixture_data(league_id=league['rapid_league_id'], season=self.season)
 
+            # Pull in Players
+            #if Player.objects.count() == 0 or options['override']:
+            print("Pulling and Inserting Players Data")
+            self.player_data(league_id=league['rapid_league_id'], season="2021")
 
+        # 4. Pull Player Stats by Fixture 
+        fixtures = Fixture.objects.filter(season=self.season,rapid_fixture_id=868029).values('rapid_fixture_id')
+        # for fixture in fixtures:
+        #     self.player_fixture_data(fixture_id=fixture['rapid_fixture_id'])
+
+    
     def rapid_api(self, extension, optional_params=False, query_string=False):
         
         url = self.url+extension
+        print("url",url)
         if optional_params: 
             querystring = query_string
             request = requests.get(url, headers=self.headers,params=querystring)
@@ -74,6 +87,7 @@ class Command(BaseCommand):
             return
 
         response = request.json()['response']
+        print("response",response)
         if not response: 
             print("No response option within the response.")
             return
@@ -209,6 +223,12 @@ class Command(BaseCommand):
                 }
             )
 
+    def player_fixture_data(self,fixture_id):
+        query_string = {'fixture':fixture_id}
+        response = self.rapid_api('fixtures/players',optional_params=True,query_string=query_string) 
+        for row in response: 
+            print("row",row)
+
     def team_data(self,league_id,season):
         # pull data from rapidAPI with the extension
         query_string = {'league':league_id,'season':season}
@@ -255,3 +275,160 @@ class Command(BaseCommand):
                 }
             )
 
+    def player_data(self, league_id, season):
+        query_string = {'league':league_id,'season':season}
+        response = self.rapid_api('players',optional_params=True,query_string=query_string)
+        for row in response: 
+            print("row",row)
+
+            # player
+            player = row['player']
+            rapid_player_id = player['id']
+            name = player['name']
+            firstname = player['firstname']
+            lastname = player['lastname']
+            age = player['age']
+            dob = player['birth']['date']
+            country = player['birth']['country']
+            nationality = player['nationality']
+            height = player['height']
+            weight = player['weight']
+            injured = player['injured']
+
+            # insert data into Player table
+            player_object, _ = Player.objects.update_or_create(
+                rapid_player_id=rapid_player_id,
+                defaults={
+                    'id': rapid_player_id,
+                    'name': name,
+                    'firstname': firstname,
+                    'lastname': lastname,
+                    'age': age,
+                    'dob': dob,
+                    'nationality': nationality,
+                    'country':country,
+                    'height': height,
+                    'weight': weight,
+                    'injured': injured
+                }
+            )
+
+            # player status
+            statistics = row['statistics'][0]
+            team_id = statistics['team']['id']
+            league_id = statistics['league']['id']
+
+            # games
+            appearances = statistics['games']['appearences']
+            minutes = statistics['games']['minutes']
+            number = statistics['games']['number']
+            position = statistics['games']['position']
+            rating = statistics['games']['rating']
+            captain = statistics['games']['captain']
+
+            # substitutes
+            subbed_in = statistics['substitutes']['in']
+            subbed_out = statistics['substitutes']['out']
+            bench = statistics['substitutes']['bench']
+
+            # shots
+            shots = statistics['shots']['total']
+            shots_on_target = statistics['shots']['on']
+            
+            # goals
+            goals = statistics['goals']['total']
+            conceded = statistics['goals']['conceded']
+            assists = statistics['goals']['assists']
+            saves = statistics['goals']['saves']
+
+            # passes
+            passes = statistics['passes']['total']
+            key_passes = statistics['passes']['key']
+            accuracy = statistics['passes']['accuracy']
+
+            # tackles
+            tackles = statistics['tackles']['total']
+            blocks = statistics['tackles']['blocks']
+            interceptions = statistics['tackles']['interceptions']
+
+            # duels
+            duels = statistics['duels']['total']
+            duels_won = statistics['duels']['won']
+
+            # dribbles
+            dribbles = statistics['dribbles']['attempts']
+            dribble_success = statistics['dribbles']['success']
+            dribble_past = statistics['dribbles']['past']
+
+            # fouls
+            fouls_drawn = statistics['fouls']['drawn']
+            fouls_committed = statistics['fouls']['committed']
+
+            # cards
+            yellow_cards = statistics['cards']['yellow']
+            yellow_red_cards = statistics['cards']['yellowred']
+            red_cards = statistics['cards']['red']
+
+            # penalty
+            penalty_won = statistics['penalty']['won']
+            penalty_committed = statistics['penalty']['commited']
+            penalty_scored = statistics['penalty']['scored']
+            penalty_missed = statistics['penalty']['missed']
+            penalty_saved = statistics['penalty']['saved']
+
+            # insert data into Team table
+            PlayerStats.objects.update_or_create(
+                player_id=player_object.id,
+                season=season,
+                team_id=team_id,
+                league_id=league_id,
+                defaults={
+                    'appearances': appearances,
+                    'minutes': minutes,
+                    'position': position,
+                    'rating': rating,
+                    'subbed_in': subbed_in,
+                    'subbed_out': subbed_out,
+                    'bench':bench,
+                    'captain': captain,
+
+                    'shots': shots,
+                    'shots_on_target': shots_on_target,
+                    'goals': goals,
+                    'conceded': conceded,
+                    'assists':assists,
+                    'saves':saves,
+
+                    'passes': passes,
+                    'key_passes': key_passes,
+                    'accuracy': accuracy,
+
+                    'tackles': tackles,
+                    'blocks':blocks,
+                    'interceptions':interceptions,
+
+                    'duels': duels,
+                    'duels_won':duels_won,
+
+                    'dribbles':dribbles,
+                    'dribble_success':dribble_success,
+                    'dribble_past':dribble_past,
+
+                    'fouls_drawn':fouls_drawn,
+                    'fouls_committed':fouls_committed,
+
+                    'yellow_cards': yellow_cards,
+                    'yellow_red_cards':yellow_red_cards,
+                    'red_cards':red_cards,
+
+                    'penalty_won': penalty_won,
+                    'penalty_committed':penalty_committed,
+                    'penalty_scored':penalty_scored,
+                    'penalty_missed':penalty_missed,
+                    'penalty_saved':penalty_saved,
+
+                }
+            )
+
+# TO DO: 
+# INSERT INTO 

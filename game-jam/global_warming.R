@@ -1,0 +1,5 @@
+city_temp <- read.csv("Data/Global Warming/GlobalLandTemperaturesByCity.csv")
+country_temp <- read.csv("Data/Global Warming/GlobalLandTemperaturesByCountry.csv")
+major_city_temp <- read.csv("Data/Global Warming/GlobalLandTemperaturesByMajorCity.csv")
+state_temp <- read.csv("Data/Global Warming/GlobalLandTemperaturesByState.csv")
+global_temp <- read.csv("Data/Global Warming/GlobalTemperatures.csv")

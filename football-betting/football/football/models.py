@@ -1,7 +1,5 @@
 from django.db import models
 
-# CREATE YOUR MODELS HERE
-
 class League(models.Model):
     name = models.CharField(max_length=150)
     type = models.CharField(max_length=150, null=True)
@@ -29,6 +27,7 @@ class Team(models.Model):
     code = models.CharField(max_length=10, null=True)
     rapid_team_id = models.IntegerField()
     country = models.CharField(max_length=50, null=True)
+    league = models.ForeignKey(League, on_delete=models.PROTECT)
     national = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
@@ -51,13 +50,24 @@ class TeamVenue(models.Model):
         db_table = "team_venue"
         unique_together = ['team', 'rapid_venue_id'] # a team can share a venue
 
+class TeamSeason(models.Model):
+    team = models.ForeignKey(Team, on_delete=models.PROTECT)
+    league = models.ForeignKey(League, on_delete=models.PROTECT)
+    season = models.ForeignKey(Season, on_delete=models.PROTECT)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "team_season"
+        unique_together = ['team', 'league', 'season']
+
 class Fixture(models.Model):
     rapid_fixture_id = models.IntegerField()
     fixture_date = models.DateTimeField()
-    referee = models.CharField(max_length=50)
+    referee = models.CharField(max_length=50, null=True)
     venue = models.ForeignKey(TeamVenue, on_delete=models.PROTECT)
     league = models.ForeignKey(League, on_delete=models.PROTECT)
-    season = models.CharField(max_length=10, null=True)
+    season = models.ForeignKey(Season,on_delete=models.PROTECT)
     fixture_round = models.CharField(max_length=50, null=True)
     home_team = models.ForeignKey(Team, related_name='home_team',on_delete=models.PROTECT)
     away_team = models.ForeignKey(Team, related_name='away_team',on_delete=models.PROTECT)
@@ -72,6 +82,7 @@ class FixtureStats(models.Model):
     fixture = models.ForeignKey(Fixture, on_delete=models.PROTECT)
     home_win = models.BooleanField(default=False, null=True)
     away_win = models.BooleanField(default=False, null=True)
+    draw = models.BooleanField(default=False, null=True)
     home_goals = models.IntegerField(null=True)
     away_goals = models.IntegerField(null=True)
     home_ht_score = models.IntegerField(null=True) # home half-time score
@@ -110,9 +121,9 @@ class Player(models.Model):
 
 class PlayerStats(models.Model):
     player = models.ForeignKey(Player, on_delete=models.PROTECT)
-    team = models.ForeignKey(Team, on_delete=models.PROTECT)
-    league = models.ForeignKey(League, on_delete=models.PROTECT)
-    season = models.CharField(max_length=10, null=True)
+    team = models.ForeignKey(Team, on_delete=models.PROTECT) 
+    league = models.ForeignKey(League, on_delete=models.PROTECT) # the current league the player is playing in
+    season = models.ForeignKey(Season,on_delete=models.PROTECT)
     appearances = models.IntegerField(null=True)
     minutes = models.IntegerField(null=True)
     position = models.CharField(max_length=50, null=True)
@@ -169,7 +180,7 @@ class PlayerStats(models.Model):
 #### AGG
 class AggHomeFixture(models.Model):
     # aggregated home results per season
-    season = models.CharField(max_length=10)
+    season = models.ForeignKey(Season,on_delete=models.PROTECT)
     home_team = models.ForeignKey(Team,on_delete=models.PROTECT)
     team_name = models.CharField(max_length=50)
     wins = models.IntegerField(null=True)
@@ -188,7 +199,7 @@ class AggHomeFixture(models.Model):
 
 class AggAwayFixture(models.Model):
     # aggregated away results per season
-    season = models.CharField(max_length=10)
+    season = models.ForeignKey(Season,on_delete=models.PROTECT)
     away_team = models.ForeignKey(Team,on_delete=models.PROTECT)
     team_name = models.CharField(max_length=50)
     wins = models.IntegerField(null=True)

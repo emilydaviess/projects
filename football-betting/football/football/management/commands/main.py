@@ -10,6 +10,7 @@ from football.models import (
     FixtureStats,
     Player,
     PlayerStats,
+    FixturePlaysStats,
 )
 from django.core.management.base import BaseCommand
 from django.db.models import Q
@@ -490,21 +491,101 @@ class Command(BaseCommand):
         response, paging = self.rapid_api(
             "fixtures/players", optional_params=True, query_string=query_string
         )
-        print("response", response)
 
         for row in response:
             print("row", row)
-            """
-            {'player': {'id': 2790, 'name': 'Jóhann Guðmundsson', 'photo': 'https://media.api-sports.io/football/players/2790.png'}, 'statistics': [{'games': {'minutes': None, 'number': 7, 'position': 'M', 'rating': None, 'captain': False, 'substitute': True}, 'offsides': None, 'shots': {'total': None, 'on': None}, 'goals': {'total': None, 'conceded': 0, 'assists': None, 'saves': None}, 'passes': {'total': None, 'key': None, 'accuracy': None}, 'tackles': {'total': None, 'blocks': None, 'interceptions': None}, 'duels': {'total': None, 'won': None}, 'dribbles': {'attempts': None, 'success': None, 'past': None}, 'fouls': {'drawn': None, 'committed': None}, 'cards': {'yellow': 0, 'red': 0}, 'penalty': {'won': None, 'commited': None, 'scored': 0, 'missed': 0, 'saved': None}}]}]}
-            """
 
-            # home team
-            home_team = row[0]
-            home_team_id = home_team["team"]["id"]
+            team_id = row["team"]["id"]
+            players = row["players"]
+            for player in players:
+                player_id = player["player"]["id"]
 
-            # away team
-            away_team = row[1]
-            away_team_id = away_team["team"]["id"]
+                player_stats = player["statistics"][0]
+
+                # games
+                player_stats_games = player_stats["games"]
+                minutes = player_stats_games["minutes"]
+                number = player_stats_games["number"]
+                position = player_stats_games["position"]
+                rating = player_stats_games["rating"]
+                captain = player_stats_games["captain"]
+
+                # in-game stats
+                offsides = player_stats["offsides"]
+                shots = player_stats["shots"]["total"]
+                shots_on_target = player_stats["shots"]["on"]
+                goals = player_stats["goals"]["total"]
+                assists = player_stats["goals"]["assists"]
+                saves = player_stats["goals"]["saves"]
+                conceded = player_stats["goals"]["conceded"]
+
+                passes = player_stats["passes"]["total"]
+                key_passes = player_stats["passes"]["key"]
+                accuracy = player_stats["passes"]["accuracy"]
+
+                tackles = player_stats["tackles"]["total"]
+                blocks = player_stats["tackles"]["blocks"]
+                interceptions = player_stats["tackles"]["interceptions"]
+
+                duels = player_stats["duels"]["total"]
+                duels_won = player_stats["duels"]["won"]
+
+                dribbles = player_stats["dribbles"]["attempts"]
+                dribbles_success = player_stats["dribbles"]["success"]
+                dribbles_past = player_stats["dribbles"]["past"]
+
+                fouls_drawn = player_stats["fouls"]["drawn"]
+                fouls_committed = player_stats["fouls"]["committed"]
+
+                yellow_cards = player_stats["cards"]["yellow"]
+                red_cards = player_stats["cards"]["red"]
+
+                penalty_won = player_stats["penalty"]["won"]
+                penalty_committed = player_stats["penalty"]["commited"]
+                penalty_scored = player_stats["penalty"]["scored"]
+                penalty_missed = player_stats["penalty"]["missed"]
+                penalty_saved = player_stats["penalty"]["saved"]
+
+                FixturePlaysStats.objects.update_or_create(
+                    player_id=player_id,
+                    fixture_id=fixture_id,
+                    team_id=team_id,
+                    defaults={
+                        "minutes": minutes,
+                        "number": number,
+                        "position": position,
+                        "rating": rating,
+                        "captain": captain,
+                        "offsides": offsides,
+                        "shots": shots,
+                        "shots_on_target": shots_on_target,
+                        "goals": goals,
+                        "assists": assists,
+                        "saves": saves,
+                        "conceded": conceded,
+                        "passes": passes,
+                        "key_passes": key_passes,
+                        "accuracy": accuracy,
+                        "tackles": tackles,
+                        "blocks": blocks,
+                        "interceptions": interceptions,
+                        "duels": duels,
+                        "duels_won": duels_won,
+                        "dribbles": dribbles,
+                        "dribbles_success": dribbles_success,
+                        "dribbles_past": dribbles_past,
+                        "fouls_drawn": fouls_drawn,
+                        "fouls_committed": fouls_committed,
+                        "yellow_cards": yellow_cards,
+                        "red_cards": red_cards,
+                        "penalty_won": penalty_won,
+                        "penalty_committed": penalty_committed,
+                        "penalty_scored": penalty_scored,
+                        "penalty_missed": penalty_missed,
+                        "penalty_saved": penalty_saved,
+                    },
+                )
+                return
 
     def handle_pagination(self, paging, func, *args, **kwargs):
         # if there are more pages, we'll need to loop through them

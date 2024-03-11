@@ -1,5 +1,4 @@
 # main.py
-import requests
 from football.models import (
     League,
     Team,
@@ -10,11 +9,16 @@ from football.models import (
     FixtureStats,
     Player,
     PlayerStats,
-    FixturePlaysStats,
+    FixturePlayerStats,
 )
-from django.core.management.base import BaseCommand
+from football.commands import BaseCommand
 from django.db.models import Q
 from django.conf import settings
+from datetime import datetime
+from football.football.functions import (
+    rapid_api,
+    handle_pagination,
+)
 
 
 class Command(BaseCommand):
@@ -26,27 +30,45 @@ class Command(BaseCommand):
         parser.add_argument("--override", dest="override", action="store_true")
         super(Command, self).add_arguments(parser)
 
-    def handle(self, *args, **options):
+    def handle(self, *args, **kwargs):
 
         self.headers = {
             "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com",
             "X-RapidAPI-Key": settings.X_RAPIDAPI_KEY,
         }
         self.url = "https://api-football-v1.p.rapidapi.com/v3/"
-        current_season = "2023"
-        self.current_season_id = Season.objects.get(season=current_season).id
+
+        # --startdate and --enddate get passed in via the command kwargs and are optional, if they're not passed in, we'll default to the current date
+        self.startdate, self.enddate = self.check_date_formatting(**kwargs)
+
+        print("Running for startdate:", self.startdate, "enddate:", self.enddate)
+
+        # if the month is > July, current_season is the current year, else it's the previous year
+        startdate_season = self.calculate_season(self.startdate)
+        enddate_season = self.calculate_season(self.enddate)
+
+        self.startdate = self.startdate.format("YYYY-MM-DD")
+        self.enddate = self.enddate.format("YYYY-MM-DD")
+
+        # get all seasons between startdate and enddate for running
+        self.seasons = Season.objects.filter(
+            season__gte=startdate_season,
+            season__lte=enddate_season,
+        ).values_list("season", flat=True)
+
+        print("self.seasons", self.seasons)
 
         # 1. pull and insert league data i.e. Premier League, La Liga
         # we don't expect Leagues to change often, so we'll only run this if the League table is empty, or if we pass up the optional parameter --override
-        if League.objects.count() == 0 or options["override"]:
+        if League.objects.count() == 0 or kwargs["override"]:
             print("Pulling and Inserting League Data")
-            self.league_data()
+            self.pull_league_data()
 
         # 2. pull and insert seasons i.e. 2022
         # we don't expect Seasons to change often, so we'll only run this if the Season table is empty, or if we pass up the optional parameter --override
-        if Season.objects.count() == 0 or options["override"]:
+        if Season.objects.count() == 0 or kwargs["override"]:
             print("Pulling and Inserting Seasons")
-            self.season_data()
+            self.pull_season_data()
 
         # 3. pulling and Inserting team, venue fixture and player data
 
@@ -58,87 +80,65 @@ class Command(BaseCommand):
             # | Q(name=140) | Q(rapid_league_id=61) | Q(rapid_league_id=135) | Q(rapid_league_id=94)
         ).values("name", "rapid_league_id")
 
-        if len(european_leagues) == 0:
-            print("No european_leagues to loop through.")
-            return
-
-        # pull season specific data
-        self.seasons = ["2023"]
-
         for season in self.seasons:
             season_obj = Season.objects.get(season=season)
             print("season:", season)
+
             for league in european_leagues:
                 print("league:", league)
+
                 league_id = league["rapid_league_id"]
 
-                # 1. team & venue data
+                # team & venue data: only need to run this once a season, or if we pass up the optional parameter --override
                 if (
-                    # self.current_season_id == season_obj.id or
                     TeamSeason.objects.filter(
                         league_id=league_id, season_id=season_obj.id
                     ).count()
                     == 0
-                    or options["override"]
+                    or kwargs["override"]
                 ):
                     print("Pulling and Inserting Team Data")
-                    self.team_data(league_id=league_id, season_obj=season_obj)
+                    self.pull_team_data(league_id=league_id, season_obj=season_obj)
 
-                # 2. fixture data
+                # players & general player data: only need to run this once a season, or if we pass up the optional parameter --override
                 if (
-                    # self.current_season_id == season_obj.id or
-                    Fixture.objects.filter(
+                    PlayerStats.objects.filter(
                         league_id=league_id, season_id=season_obj.id
                     ).count()
                     == 0
-                    or options["override"]
+                    or kwargs["override"]
+                ):
+                    print("Pulling and Inserting Players Data")
+                    self.pull_player_data(league_id=league_id, season_obj=season_obj)
+
+                # fixture data: this will need updating every week, hence we'll pass a startdate to the rapid api endpoint to only pull fixtures from that date
+                if (
+                    Fixture.objects.filter(
+                        league_id=league_id,
+                        fixture_date__gte=self.startdate,
+                        fixture_date__lte=self.enddate,
+                    ).count()
+                    == 0
+                    or kwargs["override"]
                 ):
                     print("Pulling and Inserting Fixture Data")
-                    self.fixture_data(league_id=league_id, season_obj=season_obj)
+                    self.pull_fixture_data(league_id=league_id, season_obj=season_obj)
 
-                # 3. pull players & general player data
-                # if self.current_season_id == season_obj.id or PlayerStats.objects.filter(league_id=league_id, season_id=season_obj.id).count() == 0 or options['override']:
-                #     print("Pulling and Inserting Players Data")
-                #     self.player_data(league_id=league_id, season_obj=season_obj)
-
-                # 4. pull player stats by fixture
+                # player stats by fixture: this will need updating every week, hence we'll only pull fixtures between the startdate and enddate
                 fixtures = Fixture.objects.filter(
-                    league_id=league_id, season_id=season_obj.id
+                    league_id=league_id,
+                    fixture_date__gte=self.startdate,
+                    fixture_date__lte=self.enddate,
                 ).values("rapid_fixture_id")
                 print("fixtures count:", fixtures.count())
 
                 for fixture in fixtures:
                     fixture_id = fixture["rapid_fixture_id"]
-                    self.player_fixture_data(fixture_id=fixture_id)
-                    return
+                    self.pull_player_fixture_data(fixture_id=fixture_id)
 
-    def rapid_api(self, extension, optional_params=False, query_string=False):
+    def pull_league_data(self):
 
-        url = self.url + extension
-        print("url", url)
-        if optional_params:
-            querystring = query_string
-            request = requests.get(url, headers=self.headers, params=querystring)
-        else:
-            request = requests.get(url, headers=self.headers)
-
-        if not request:
-            print("No data returned from RapidAPI.")
-            return
-
-        response = request.json()["response"]
-        paging = request.json()[
-            "paging"
-        ]  # some endpoints have paging, which we'll need to handle
-        if not response:
-            print("No response option within the response.")
-            return
-
-        return response, paging
-
-    def league_data(self):
-
-        response, paging = self.rapid_api("leagues")
+        response, paging = rapid_api("leagues")
 
         for row in response:
             league = row["league"]
@@ -162,19 +162,23 @@ class Command(BaseCommand):
                 },
             )
 
-    def season_data(self):
-
+    def pull_season_data(self):
         # pull data from rapidAPI with the extension
-        response, paging = self.rapid_api("seasons")
+        response, paging = rapid_api("seasons")
 
         for row in response:
             # insert data into Season table
             Season.objects.update_or_create(season=row)
 
-    def fixture_data(self, league_id, season_obj):
+    def pull_fixture_data(self, league_id, season_obj):
         # pull data from rapidAPI with the extension
-        query_string = {"league": league_id, "season": season_obj.season}
-        response, paging = self.rapid_api(
+        query_string = {
+            "league": league_id,
+            "season": season_obj.season,
+            "from": self.startdate,
+            "to": self.enddate,
+        }
+        response, paging = rapid_api(
             "fixtures", optional_params=True, query_string=query_string
         )
 
@@ -183,6 +187,8 @@ class Command(BaseCommand):
             fixture = row["fixture"]
             rapid_fixture_id = fixture["id"]
             fixture_date = fixture["date"]
+            fixture_timestamp = fixture["timestamp"]
+            fixture_timezone = fixture["timezone"]
             referee = fixture["referee"]
             venue_id = fixture["venue"]["id"]
             try:
@@ -209,6 +215,8 @@ class Command(BaseCommand):
                 defaults={
                     "id": rapid_fixture_id,
                     "fixture_date": fixture_date,
+                    "timestamp": fixture_timestamp,
+                    "timezone": fixture_timezone,
                     "referee": referee,
                     "venue_id": venue_model_id,
                     "league_id": league_id,
@@ -272,10 +280,10 @@ class Command(BaseCommand):
                 },
             )
 
-    def team_data(self, league_id, season_obj):
+    def pull_team_data(self, league_id, season_obj):
         # pull data from rapidAPI with the extension
         query_string = {"league": league_id, "season": season_obj.season}
-        response, paging = self.rapid_api(
+        response, paging = rapid_api(
             "teams", optional_params=True, query_string=query_string
         )
 
@@ -325,7 +333,7 @@ class Command(BaseCommand):
                 team_id=team_object.id, league_id=league_id, season_id=season_obj.id
             )
 
-    def player_data(self, league_id, season_obj, api_paging=False):
+    def pull_player_data(self, league_id, season_obj, api_paging=False):
         # players part of the API is paginated, so we'll need to handle that
         query_string = {"league": league_id, "season": season_obj.season}
         if api_paging:
@@ -335,7 +343,7 @@ class Command(BaseCommand):
                 "page": api_paging,
             }
 
-        response, paging = self.rapid_api(
+        response, paging = rapid_api(
             "players", optional_params=True, query_string=query_string
         )
 
@@ -482,19 +490,17 @@ class Command(BaseCommand):
             )
 
         # if there are more pages, we'll need to loop through them
-        self.handle_pagination(
-            paging, self.player_data, league_id=league_id, season_obj=season_obj
+        handle_pagination(
+            paging, self.pull_player_data, league_id=league_id, season_obj=season_obj
         )
 
-    def player_fixture_data(self, fixture_id):
+    def pull_player_fixture_data(self, fixture_id):
         query_string = {"fixture": fixture_id}
-        response, paging = self.rapid_api(
+        response, paging = rapid_api(
             "fixtures/players", optional_params=True, query_string=query_string
         )
 
         for row in response:
-            print("row", row)
-
             team_id = row["team"]["id"]
             players = row["players"]
             for player in players:
@@ -531,8 +537,8 @@ class Command(BaseCommand):
                 duels_won = player_stats["duels"]["won"]
 
                 dribbles = player_stats["dribbles"]["attempts"]
-                dribbles_success = player_stats["dribbles"]["success"]
-                dribbles_past = player_stats["dribbles"]["past"]
+                dribble_success = player_stats["dribbles"]["success"]
+                dribble_past = player_stats["dribbles"]["past"]
 
                 fouls_drawn = player_stats["fouls"]["drawn"]
                 fouls_committed = player_stats["fouls"]["committed"]
@@ -546,7 +552,7 @@ class Command(BaseCommand):
                 penalty_missed = player_stats["penalty"]["missed"]
                 penalty_saved = player_stats["penalty"]["saved"]
 
-                FixturePlaysStats.objects.update_or_create(
+                FixturePlayerStats.objects.update_or_create(
                     player_id=player_id,
                     fixture_id=fixture_id,
                     team_id=team_id,
@@ -572,8 +578,8 @@ class Command(BaseCommand):
                         "duels": duels,
                         "duels_won": duels_won,
                         "dribbles": dribbles,
-                        "dribbles_success": dribbles_success,
-                        "dribbles_past": dribbles_past,
+                        "dribble_success": dribble_success,
+                        "dribble_past": dribble_past,
                         "fouls_drawn": fouls_drawn,
                         "fouls_committed": fouls_committed,
                         "yellow_cards": yellow_cards,
@@ -585,14 +591,3 @@ class Command(BaseCommand):
                         "penalty_saved": penalty_saved,
                     },
                 )
-                return
-
-    def handle_pagination(self, paging, func, *args, **kwargs):
-        # if there are more pages, we'll need to loop through them
-        if paging["current"] < paging["total"]:
-            print(
-                "There are more pages to loop through - recall function with page:",
-                paging["current"] + 1,
-            )
-            kwargs["api_paging"] = paging["current"] + 1
-            func(*args, **kwargs)

@@ -71,6 +71,8 @@ class TeamSeason(models.Model):
 class Fixture(models.Model):
     rapid_fixture_id = models.IntegerField()
     fixture_date = models.DateTimeField()
+    timestamp = models.IntegerField()
+    timezone = models.CharField(max_length=10, null=True)
     referee = models.CharField(max_length=50, null=True)
     venue = models.ForeignKey(TeamVenue, on_delete=models.PROTECT)
     league = models.ForeignKey(League, on_delete=models.PROTECT)
@@ -143,6 +145,7 @@ class FixturePlayerStats(models.Model):
     team = models.ForeignKey(Team, on_delete=models.PROTECT)
     player = models.ForeignKey(Player, on_delete=models.PROTECT)
     minutes = models.IntegerField(null=True)
+    number = models.IntegerField(null=True)
     position = models.CharField(max_length=50, null=True)
     rating = models.DecimalField(max_digits=10, decimal_places=5, blank=True, null=True)
     captain = models.BooleanField(default=False)
@@ -151,6 +154,8 @@ class FixturePlayerStats(models.Model):
     shots_on_target = models.IntegerField(null=True)
     goals = models.IntegerField(null=True)
     assists = models.IntegerField(null=True)
+    conceded = models.IntegerField(null=True)
+    saves = models.IntegerField(null=True)
     passes = models.IntegerField(null=True)
     key_passes = models.IntegerField(null=True)
     accuracy = models.DecimalField(

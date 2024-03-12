@@ -14,10 +14,10 @@ from football.models import (
 from football.commands import BaseCommand
 from django.db.models import Q
 from django.conf import settings
-from datetime import datetime
-from football.football.functions import (
+from football.functions import (
     rapid_api,
     handle_pagination,
+    calculate_season,
 )
 
 
@@ -40,12 +40,13 @@ class Command(BaseCommand):
 
         # --startdate and --enddate get passed in via the command kwargs and are optional, if they're not passed in, we'll default to the current date
         self.startdate, self.enddate = self.check_date_formatting(**kwargs)
+        self.total_pages = 1
 
         print("Running for startdate:", self.startdate, "enddate:", self.enddate)
 
         # if the month is > July, current_season is the current year, else it's the previous year
-        startdate_season = self.calculate_season(self.startdate)
-        enddate_season = self.calculate_season(self.enddate)
+        startdate_season = calculate_season(self.startdate)
+        enddate_season = calculate_season(self.enddate)
 
         self.startdate = self.startdate.format("YYYY-MM-DD")
         self.enddate = self.enddate.format("YYYY-MM-DD")
@@ -61,13 +62,13 @@ class Command(BaseCommand):
         # 1. pull and insert league data i.e. Premier League, La Liga
         # we don't expect Leagues to change often, so we'll only run this if the League table is empty, or if we pass up the optional parameter --override
         if League.objects.count() == 0 or kwargs["override"]:
-            print("Pulling and Inserting League Data")
+            self.print_info("Pulling and Inserting League Data")
             self.pull_league_data()
 
         # 2. pull and insert seasons i.e. 2022
         # we don't expect Seasons to change often, so we'll only run this if the Season table is empty, or if we pass up the optional parameter --override
         if Season.objects.count() == 0 or kwargs["override"]:
-            print("Pulling and Inserting Seasons")
+            self.print_info("Pulling and Inserting Seasons")
             self.pull_season_data()
 
         # 3. pulling and Inserting team, venue fixture and player data
@@ -108,7 +109,7 @@ class Command(BaseCommand):
                     == 0
                     or kwargs["override"]
                 ):
-                    print("Pulling and Inserting Players Data")
+                    self.print_info("Pulling and Inserting Players Data")
                     self.pull_player_data(league_id=league_id, season_obj=season_obj)
 
                 # fixture data: this will need updating every week, hence we'll pass a startdate to the rapid api endpoint to only pull fixtures from that date
@@ -121,7 +122,7 @@ class Command(BaseCommand):
                     == 0
                     or kwargs["override"]
                 ):
-                    print("Pulling and Inserting Fixture Data")
+                    self.print_info("Pulling and Inserting Fixture Data")
                     self.pull_fixture_data(league_id=league_id, season_obj=season_obj)
 
                 # player stats by fixture: this will need updating every week, hence we'll only pull fixtures between the startdate and enddate
@@ -136,9 +137,11 @@ class Command(BaseCommand):
                     fixture_id = fixture["rapid_fixture_id"]
                     self.pull_player_fixture_data(fixture_id=fixture_id)
 
+        self.print_success("Finished pulling and inserting player data")
+
     def pull_league_data(self):
 
-        response, paging = rapid_api("leagues")
+        response, paging = rapid_api(self, "leagues")
 
         for row in response:
             league = row["league"]
@@ -164,7 +167,7 @@ class Command(BaseCommand):
 
     def pull_season_data(self):
         # pull data from rapidAPI with the extension
-        response, paging = rapid_api("seasons")
+        response, paging = rapid_api(self, extension="seasons")
 
         for row in response:
             # insert data into Season table
@@ -179,7 +182,7 @@ class Command(BaseCommand):
             "to": self.enddate,
         }
         response, paging = rapid_api(
-            "fixtures", optional_params=True, query_string=query_string
+            self, extension="fixtures", optional_params=True, query_string=query_string
         )
 
         for row in response:
@@ -284,7 +287,7 @@ class Command(BaseCommand):
         # pull data from rapidAPI with the extension
         query_string = {"league": league_id, "season": season_obj.season}
         response, paging = rapid_api(
-            "teams", optional_params=True, query_string=query_string
+            self, extension="teams", optional_params=True, query_string=query_string
         )
 
         for row in response:
@@ -344,11 +347,29 @@ class Command(BaseCommand):
             }
 
         response, paging = rapid_api(
-            "players", optional_params=True, query_string=query_string
+            self, extension="players", optional_params=True, query_string=query_string
         )
 
-        for row in response:
+        # paging.get("total", 1) returns the value of paging["total"] if it exists
+        self.total_pages = paging.get("total", 1) if paging else self.total_pages
 
+        if api_paging >= self.total_pages:
+            self.print_info(
+                f"No more pages to loop through, pulled {api_paging}:{self.total_pages} pages from API."
+            )
+            return
+
+        # we're getting instances in which the response is None, so we'll need to handle that
+        if not response or response is None:
+            self.print_warning("Rapid API response returned None.")
+            # re-call the function with the next page
+            self.pull_player_data(
+                league_id=league_id,
+                season_obj=season_obj,
+                api_paging=api_paging + 1,
+            )
+
+        for row in response:
             # player
             player = row["player"]
             rapid_player_id = player["id"]
@@ -497,7 +518,10 @@ class Command(BaseCommand):
     def pull_player_fixture_data(self, fixture_id):
         query_string = {"fixture": fixture_id}
         response, paging = rapid_api(
-            "fixtures/players", optional_params=True, query_string=query_string
+            self,
+            extension="fixtures/players",
+            optional_params=True,
+            query_string=query_string,
         )
 
         for row in response:
@@ -552,42 +576,47 @@ class Command(BaseCommand):
                 penalty_missed = player_stats["penalty"]["missed"]
                 penalty_saved = player_stats["penalty"]["saved"]
 
-                FixturePlayerStats.objects.update_or_create(
-                    player_id=player_id,
-                    fixture_id=fixture_id,
-                    team_id=team_id,
-                    defaults={
-                        "minutes": minutes,
-                        "number": number,
-                        "position": position,
-                        "rating": rating,
-                        "captain": captain,
-                        "offsides": offsides,
-                        "shots": shots,
-                        "shots_on_target": shots_on_target,
-                        "goals": goals,
-                        "assists": assists,
-                        "saves": saves,
-                        "conceded": conceded,
-                        "passes": passes,
-                        "key_passes": key_passes,
-                        "accuracy": accuracy,
-                        "tackles": tackles,
-                        "blocks": blocks,
-                        "interceptions": interceptions,
-                        "duels": duels,
-                        "duels_won": duels_won,
-                        "dribbles": dribbles,
-                        "dribble_success": dribble_success,
-                        "dribble_past": dribble_past,
-                        "fouls_drawn": fouls_drawn,
-                        "fouls_committed": fouls_committed,
-                        "yellow_cards": yellow_cards,
-                        "red_cards": red_cards,
-                        "penalty_won": penalty_won,
-                        "penalty_committed": penalty_committed,
-                        "penalty_scored": penalty_scored,
-                        "penalty_missed": penalty_missed,
-                        "penalty_saved": penalty_saved,
-                    },
-                )
+                try:
+                    FixturePlayerStats.objects.update_or_create(
+                        player_id=player_id,
+                        fixture_id=fixture_id,
+                        team_id=team_id,
+                        defaults={
+                            "minutes": minutes,
+                            "number": number,
+                            "position": position,
+                            "rating": rating,
+                            "captain": captain,
+                            "offsides": offsides,
+                            "shots": shots,
+                            "shots_on_target": shots_on_target,
+                            "goals": goals,
+                            "assists": assists,
+                            "saves": saves,
+                            "conceded": conceded,
+                            "passes": passes,
+                            "key_passes": key_passes,
+                            "accuracy": accuracy,
+                            "tackles": tackles,
+                            "blocks": blocks,
+                            "interceptions": interceptions,
+                            "duels": duels,
+                            "duels_won": duels_won,
+                            "dribbles": dribbles,
+                            "dribble_success": dribble_success,
+                            "dribble_past": dribble_past,
+                            "fouls_drawn": fouls_drawn,
+                            "fouls_committed": fouls_committed,
+                            "yellow_cards": yellow_cards,
+                            "red_cards": red_cards,
+                            "penalty_won": penalty_won,
+                            "penalty_committed": penalty_committed,
+                            "penalty_scored": penalty_scored,
+                            "penalty_missed": penalty_missed,
+                            "penalty_saved": penalty_saved,
+                        },
+                    )
+                except Exception as e:
+                    self.print_failure(
+                        f"Error inserting FixturePlayerStats for player_id: {player_id} and fixture_id: {fixture_id} and team_id: {team_id} with error: {e}"
+                    )

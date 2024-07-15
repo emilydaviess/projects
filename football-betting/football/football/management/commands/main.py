@@ -102,26 +102,52 @@ class Command(BaseCommand):
                     self.pull_team_data(league_id=league_id, season_obj=season_obj)
 
                 # players & general player data: only need to run this once a season, or if we pass up the optional parameter --override
-                if (
-                    PlayerStats.objects.filter(
+                teams = (
+                    TeamSeason.objects.filter(
                         league_id=league_id, season_id=season_obj.id
-                    ).count()
-                    == 0
-                    or kwargs["override"]
-                ):
-                    self.print_info("Pulling and Inserting Players Data")
-                    self.pull_player_data(league_id=league_id, season_obj=season_obj)
+                    )
+                    .values("team_id")
+                    .distinct()
+                )
+                for team in teams:
+                    team_id = team["team_id"]
+                    print(
+                        "pulling player data for team:",
+                        team_id,
+                        "& league_id:",
+                        league_id,
+                        "& season:",
+                        season_obj.season,
+                    )
+                    if (
+                        PlayerStats.objects.filter(
+                            league_id=league_id,
+                            season_id=season_obj.id,
+                            team_id=team_id,
+                        ).count()
+                        == 0
+                        or kwargs["override"]
+                    ):
+                        self.print_info(
+                            "Pulling and Inserting Players Data for Team:", team_id
+                        )
+                        self.pull_player_data(
+                            league_id=league_id, team_id=team_id, season_obj=season_obj
+                        )
 
                 # fixture data: this will need updating every week, hence we'll pass a startdate to the rapid api endpoint to only pull fixtures from that date
-                if (
-                    Fixture.objects.filter(
-                        league_id=league_id,
-                        fixture_date__gte=self.startdate,
-                        fixture_date__lte=self.enddate,
-                    ).count()
-                    == 0
-                    or kwargs["override"]
-                ):
+
+                fixtures = Fixture.objects.filter(
+                    league_id=league_id,
+                    fixture_date__gte=self.startdate,
+                    fixture_date__lte=self.enddate,
+                )
+                total_count = fixtures.count()
+                null_referee_count = fixtures.filter(
+                    referee__isnull=True
+                ).count()  # you can pull fixtures in advance but with no fixture information, hence we'd want to update this data
+
+                if total_count == 0 or null_referee_count > 0 or kwargs["override"]:
                     self.print_info("Pulling and Inserting Fixture Data")
                     self.pull_fixture_data(league_id=league_id, season_obj=season_obj)
 
@@ -184,6 +210,9 @@ class Command(BaseCommand):
         response, paging = rapid_api(
             self, extension="fixtures", optional_params=True, query_string=query_string
         )
+        if not response or response is None:
+            self.print_warning("No response returned from RapidAPI.")
+            return
 
         for row in response:
             # fixture
@@ -229,7 +258,6 @@ class Command(BaseCommand):
                     "away_team_id": away_team,
                 },
             )
-
             # game result
             home_win = teams["home"]["winner"]
             away_win = teams["away"]["winner"]
@@ -285,7 +313,10 @@ class Command(BaseCommand):
 
     def pull_team_data(self, league_id, season_obj):
         # pull data from rapidAPI with the extension
-        query_string = {"league": league_id, "season": season_obj.season}
+        query_string = {
+            "league": league_id,
+            "season": season_obj.season,
+        }
         response, paging = rapid_api(
             self, extension="teams", optional_params=True, query_string=query_string
         )
@@ -336,12 +367,13 @@ class Command(BaseCommand):
                 team_id=team_object.id, league_id=league_id, season_id=season_obj.id
             )
 
-    def pull_player_data(self, league_id, season_obj, api_paging=False):
+    def pull_player_data(self, league_id, team_id, season_obj, api_paging=False):
         # players part of the API is paginated, so we'll need to handle that
         query_string = {"league": league_id, "season": season_obj.season}
         if api_paging:
             query_string = {
                 "league": league_id,
+                "team": team_id,
                 "season": season_obj.season,
                 "page": api_paging,
             }
@@ -352,6 +384,7 @@ class Command(BaseCommand):
 
         # paging.get("total", 1) returns the value of paging["total"] if it exists
         self.total_pages = paging.get("total", 1) if paging else self.total_pages
+        print("total_pages:", self.total_pages)
 
         if api_paging >= self.total_pages:
             self.print_info(
@@ -365,6 +398,7 @@ class Command(BaseCommand):
             # re-call the function with the next page
             self.pull_player_data(
                 league_id=league_id,
+                team_id=team_id,
                 season_obj=season_obj,
                 api_paging=api_paging + 1,
             )
@@ -523,6 +557,9 @@ class Command(BaseCommand):
             optional_params=True,
             query_string=query_string,
         )
+        if not response or response is None:
+            self.print_warning("No response returned from RapidAPI.")
+            return
 
         for row in response:
             team_id = row["team"]["id"]

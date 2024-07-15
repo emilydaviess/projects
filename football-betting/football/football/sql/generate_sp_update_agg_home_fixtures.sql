@@ -6,9 +6,9 @@ CREATE PROCEDURE sp_update_agg_home_fixtures ()
 BEGIN
 
 -- TEAMS WHO PLAY HOME AGGREGATED RESULTS BY SEASON
-INSERT INTO agg_home_fixture(`season`,`home_team_id`,`team_name`,`wins`,`losses`,`draws`,`goals_for`,`goals_against`,`ht_score_for`,`ht_score_against`,`ft_score_for`,`ft_score_against`)
+INSERT INTO agg_home_fixture(`season_id`,`home_team_id`,`team_name`,`wins`,`losses`,`draws`,`goals_for`,`goals_against`,`ht_score_for`,`ht_score_against`,`ft_score_for`,`ft_score_against`)
 SELECT
-	a.season,
+	a.season_id,
 	a.home_team_id, 
 	b.name as `team_name`,
 	SUM(c.home_win) as `wins`, 
@@ -23,7 +23,7 @@ SELECT
 FROM fixture a
 JOIN team b on b.id = a.home_team_id 
 JOIN fixture_stats c on c.fixture_id = a.id
-GROUP BY a.season, a.home_team_id, b.name
+GROUP BY a.season_id, a.home_team_id
 ON DUPLICATE KEY UPDATE team_name=VALUES(`team_name`),wins=VALUES(`wins`),losses=VALUES(`losses`),draws=VALUES(`draws`),goals_for=VALUES(`goals_for`),goals_against=VALUES(`goals_against`),ht_score_for=VALUES(`ht_score_for`),ht_score_against=VALUES(`ht_score_against`),ft_score_for=VALUES(`ft_score_for`),ft_score_against=VALUES(`ft_score_against`); 
 
 END;

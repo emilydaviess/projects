@@ -289,3 +289,23 @@ class AggAwayFixture(models.Model):
     class Meta:
         db_table = "agg_away_fixture"
         unique_together = ["season", "away_team"]
+
+
+class AggFixture(models.Model):
+    # aggregated away results per season
+    season = models.ForeignKey(Season, on_delete=models.PROTECT)
+    team = models.ForeignKey(Team, on_delete=models.PROTECT)
+    team_name = models.CharField(max_length=50)
+    wins = models.IntegerField(null=True)
+    losses = models.IntegerField(null=True)
+    draws = models.IntegerField(null=True)
+    goals_for = models.IntegerField(null=True)  # goals for the away team
+    goals_against = models.IntegerField(null=True)  # goals for the home team
+    ht_score_for = models.IntegerField(null=True)
+    ht_score_against = models.IntegerField(null=True)
+    ft_score_for = models.IntegerField(null=True)
+    ft_score_against = models.IntegerField(null=True)
+
+    class Meta:
+        db_table = "agg_fixture"
+        unique_together = ["season", "team"]

@@ -15,12 +15,10 @@ def rapid_api(self, extension, optional_params=False, query_string=False):
     if not request:
         self.print_warning("No data returned from RapidAPI.")
         return None, None
-
     response = request.json()["response"]
     paging = request.json()[
         "paging"
     ]  # some endpoints have paging, which we'll need to handle
-
     if not response:
         if not paging:
             self.print_warning("No response or paging option within the response.")

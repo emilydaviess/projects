@@ -1,0 +1,15 @@
+artifact_uri: /Users/emily/Github Projects/projects/tutorials/mlflow/custom_model_artifacts/bffdbb0d55e241ada59c68742b1c96f7/artifacts
+end_time: 1721143782260
+entry_point_name: ''
+experiment_id: '953063999449648762'
+lifecycle_stage: active
+run_id: bffdbb0d55e241ada59c68742b1c96f7
+run_name: custom_model
+run_uuid: bffdbb0d55e241ada59c68742b1c96f7
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1721143779553
+status: 4
+tags: []
+user_id: emily

@@ -1,0 +1,10 @@
+artifact_location: /Users/emily/Github Projects/projects/tutorials/mlflow/nested_runs_artifacts
+creation_time: 1721142952367
+experiment_id: '214609236723752705'
+last_update_time: 1721143027452
+lifecycle_stage: deleted
+name: nested runs
+tags:
+  env: dev
+  purpose: learning
+  version: 1.0.0

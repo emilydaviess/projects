@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/0/40755856f5624a59915eac7e09398df0/artifacts
+end_time: 1721142341038
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 40755856f5624a59915eac7e09398df0
+run_name: parent_run
+run_uuid: 40755856f5624a59915eac7e09398df0
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1721142340943
+status: 3
+tags: []
+user_id: emily

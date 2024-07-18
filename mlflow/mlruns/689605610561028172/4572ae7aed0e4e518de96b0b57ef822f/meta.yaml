@@ -1,0 +1,15 @@
+artifact_uri: /Users/emily/Github Projects/projects/tutorials/mlflow/nested_runs_artifacts/4572ae7aed0e4e518de96b0b57ef822f/artifacts
+end_time: 1721143096502
+entry_point_name: ''
+experiment_id: '689605610561028172'
+lifecycle_stage: active
+run_id: 4572ae7aed0e4e518de96b0b57ef822f
+run_name: parent_run
+run_uuid: 4572ae7aed0e4e518de96b0b57ef822f
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1721143096396
+status: 3
+tags: []
+user_id: emily

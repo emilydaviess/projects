@@ -1,0 +1,9 @@
+digest: 197e1520
+name: dataset
+profile: '{"features_shape": [200, 10], "features_size": 2000, "features_nbytes":
+  16000}'
+schema: '{"mlflow_tensorspec": {"features": "[{\"type\": \"tensor\", \"tensor-spec\":
+  {\"dtype\": \"float64\", \"shape\": [-1, 10]}}]", "targets": null}}'
+source: '{"tags": {"mlflow.user": "emily", "mlflow.source.name": "05_mlflow_runs_randomforestclassification.py",
+  "mlflow.source.type": "LOCAL", "mlflow.source.git.commit": "9fb24ad6428b0bd280262e666072092c897f65d8"}}'
+source_type: code

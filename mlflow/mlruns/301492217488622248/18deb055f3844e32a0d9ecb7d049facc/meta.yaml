@@ -1,0 +1,15 @@
+artifact_uri: /Users/emily/Github Projects/projects/tutorials/mlflow/testing_mlflow_artifacts/18deb055f3844e32a0d9ecb7d049facc/artifacts
+end_time: 1721141813851
+entry_point_name: ''
+experiment_id: '301492217488622248'
+lifecycle_stage: active
+run_id: 18deb055f3844e32a0d9ecb7d049facc
+run_name: logging_images
+run_uuid: 18deb055f3844e32a0d9ecb7d049facc
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1721141806869
+status: 3
+tags: []
+user_id: emily

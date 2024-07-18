@@ -1,0 +1,9 @@
+artifact_location: /Users/emily/Github Projects/projects/tutorials/mlflow/testing_mlflow_artifacts
+creation_time: 1721134476723
+experiment_id: '124189884952485366'
+last_update_time: 1721135886793
+lifecycle_stage: deleted
+name: testing_ml_flow
+tags:
+  env: dev
+  version: 1.0.0

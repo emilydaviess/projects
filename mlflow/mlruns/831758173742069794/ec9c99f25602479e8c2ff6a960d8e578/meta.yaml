@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/831758173742069794/ec9c99f25602479e8c2ff6a960d8e578/artifacts
+end_time: null
+entry_point_name: ''
+experiment_id: '831758173742069794'
+lifecycle_stage: active
+run_id: ec9c99f25602479e8c2ff6a960d8e578
+run_name: serious-gnat-703
+run_uuid: ec9c99f25602479e8c2ff6a960d8e578
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1721077727391
+status: 1
+tags: []
+user_id: emily

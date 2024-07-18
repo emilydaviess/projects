@@ -1,0 +1,16 @@
+artifact_uri: file:///Users/emily/Github%20Projects/projects/tutorials/mlflow/mlruns/471042527540926644/c78d18317d93409c85bab3d1bb41690d/artifacts
+deleted_time: 1721142949236
+end_time: 1721142847696
+entry_point_name: ''
+experiment_id: '471042527540926644'
+lifecycle_stage: deleted
+run_id: c78d18317d93409c85bab3d1bb41690d
+run_name: child_run12
+run_uuid: c78d18317d93409c85bab3d1bb41690d
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1721142847681
+status: 3
+tags: []
+user_id: emily

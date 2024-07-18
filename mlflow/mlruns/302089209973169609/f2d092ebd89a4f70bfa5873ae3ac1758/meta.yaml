@@ -1,0 +1,15 @@
+artifact_uri: /Users/emily/Github Projects/projects/tutorials/mlflow/model_signature_artifacts/f2d092ebd89a4f70bfa5873ae3ac1758/artifacts
+end_time: 1721145052073
+entry_point_name: ''
+experiment_id: '302089209973169609'
+lifecycle_stage: active
+run_id: f2d092ebd89a4f70bfa5873ae3ac1758
+run_name: model_signature_run
+run_uuid: f2d092ebd89a4f70bfa5873ae3ac1758
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1721145048445
+status: 3
+tags: []
+user_id: emily

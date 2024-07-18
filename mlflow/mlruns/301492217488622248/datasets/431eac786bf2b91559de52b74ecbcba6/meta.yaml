@@ -1,0 +1,10 @@
+digest: 8833772d
+name: dataset
+profile: '{"features_shape": [800, 10], "features_size": 8000, "features_nbytes":
+  64000, "targets_shape": [800], "targets_size": 800, "targets_nbytes": 6400}'
+schema: '{"mlflow_tensorspec": {"features": "[{\"type\": \"tensor\", \"tensor-spec\":
+  {\"dtype\": \"float64\", \"shape\": [-1, 10]}}]", "targets": "[{\"type\": \"tensor\",
+  \"tensor-spec\": {\"dtype\": \"int64\", \"shape\": [-1]}}]"}}'
+source: '{"tags": {"mlflow.user": "emily", "mlflow.source.name": "05_mlflow_runs_randomforestclassification.py",
+  "mlflow.source.type": "LOCAL", "mlflow.source.git.commit": "9fb24ad6428b0bd280262e666072092c897f65d8"}}'
+source_type: code
